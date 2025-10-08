@@ -31,7 +31,7 @@ from pysages.typing import Callable, Optional
 from pysages.utils import copy, identity
 
 ###
-kConversionFactors = {"real": 2390.0573615334906, "metal": 1, "electron": 1.06657236}
+kConversionFactors = {"real": 2390.0573615334906, "metal": 1.0, "electron": 1.06657236}
 kDefaultLocation = dlext.kOnHost if not hasattr(ExecutionSpace, "kOnDevice") else dlext.kOnDevice
 
 ###
