@@ -30,8 +30,46 @@ from pysages.backends.snapshot import (
 from pysages.typing import Callable, Optional
 from pysages.utils import copy, identity
 
-kConversionFactors = {"real": 2390.0573615334906, "metal": 1.0364269e-4, "electron": 1.06657236}
+###
+kConversionFactors = {"real": 2390.0573615334906, "metal": 1.0, "electron": 1.06657236}
 kDefaultLocation = dlext.kOnHost if not hasattr(ExecutionSpace, "kOnDevice") else dlext.kOnDevice
+
+###
+class Cache:
+    """Global cache for storing data needed by collective variable calculations."""
+    def __init__(self):
+        self.data = {}
+        self.update_function = None
+    
+    def set_update_function(self, func):
+        """Set the function that will be called to update the cache."""
+        self.update_function = func
+    
+    def update(self, snapshot):
+        """Update the cache using the registered update function."""
+        if self.update_function is not None:
+            self.data = self.update_function(snapshot)
+    
+    def get(self, key=None):
+        """Get data from cache. If key is None, return entire cache."""
+        if key is None:
+            return self.data
+        return self.data.get(key)
+    
+    def clear(self):
+        """Clear the cache."""
+        self.data = {}
+
+
+# Global instance of the cache
+_cache = Cache()
+
+def get_cache():
+    """Returns the global CV cache instance."""
+    return _cache
+
+def set_cache_updater(update_function):
+    _cache.set_update_function(update_function)
 
 
 class Sampler(FixDLExt):  # pylint: disable=R0902
@@ -77,6 +115,9 @@ class Sampler(FixDLExt):  # pylint: disable=R0902
         def update(timestep):
             self.view.synchronize()
             self.snapshot = self._update_snapshot()
+            ###
+            _cache.update(self.snapshot)
+            ###
             self.state = method_update(self.snapshot, self.state)
             bias(self.snapshot, self.state)
             if self.callback:
@@ -104,7 +145,10 @@ class Sampler(FixDLExt):  # pylint: disable=R0902
         velocities, (_, types) = s.vel_mass
         _, (masses, _) = self.snapshot.vel_mass
         vel_mass = (velocities, (masses, types))
-        box = self._update_box()
+        ###
+        #box = self._update_box()
+        box = Box(*get_global_box(self.context))
+        ### 
         dt = self.snapshot.dt
 
         return Snapshot(s.positions, vel_mass, s.forces, s.ids[1:], s.images, box, dt)

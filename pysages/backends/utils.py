@@ -27,7 +27,7 @@ def cupy_helpers():
 
     def _view(x: JaxArray):
         """Wraps a view of `x: JaxArray` as a `cupy.ndarray`."""
-        return cupy.from_dlpack(dlpack.to_dlpack(x))
+        return cupy.from_dlpack(x)
 
     return _sync, _view
 
